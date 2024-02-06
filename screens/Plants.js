@@ -43,25 +43,6 @@ const Plants = () => {
     const [currentHost, setCurrentHost] = useState('192.168.0.106');
     const [currentPort, setCurrentPort] = useState(8080);
     const [openModal, setOpenModal] = useState(false);
-    const [waterLevel] = useState(new Animated.Value(0));
-
-    const water = () => {
-        Animated.timing(waterLevel, {
-            toValue: 100,
-            duration: 2000,
-            useNativeDriver: false,      
-        }).start();
-        
-    };
-        
-    const waterStyle = {
-        height: waterLevel.interpolate({
-            inputRange: [0, 100],
-            outputRange: ['0%', '80%'],
-            extrapolate: 'clamp',   
-        }),
-        
-    };
     
     const handleHostChange = (newHost) => {
         setCurrentHost(newHost);
@@ -70,6 +51,9 @@ const Plants = () => {
         const portNumber = parseInt(newPort, 10);
     if (!isNaN(portNumber)) {
         setCurrentPort(portNumber);
+    }
+    else{
+        setCurrentPort(0);
     }
     };
 
@@ -81,7 +65,34 @@ const Plants = () => {
 
         // Update the client configuration
         client = new Paho.MQTT.Client(currentHost, currentPort, options.path, options.id);
-
+        client.onConnectionLost = (responseObject) => {
+            console.log('Connection Lost:', responseObject.errorMessage);
+          };
+          client.onMessageArrived = (message) => {
+            console.log('Message Arrived:', message.destinationName, message.payloadString);
+  
+            switch (message.destinationName) {
+              case "3RST-3M99-HWVR-H83F/TEMP":
+                  setTemperature(parseFloat(message.payloadString));
+                  break;
+              case "3RST-3M99-HWVR-H83F/HUM":
+                  setHumidity(parseFloat(message.payloadString));
+                  break;
+              case "3RST-3M99-HWVR-H83F/P1":
+                  setP1Value(parseFloat(message.payloadString) + '%');
+                  break;
+              case "3RST-3M99-HWVR-H83F/P2":
+                  setP2Value(parseFloat(message.payloadString) + '%');
+                  break;
+              case "3RST-3M99-HWVR-H83F/P3":
+                  setP3Value(parseFloat(message.payloadString) + '%');
+                  break;
+              case "3RST-3M99-HWVR-H83F/P4":
+                  setP4Value(parseFloat(message.payloadString) + '%');
+                  break;
+              // Add other cases as needed
+          }
+        }
         // Reconnect with the new configuration
         client.connect({onSuccess: onConnect, onFailure: onFailure});
 
@@ -93,14 +104,47 @@ const Plants = () => {
         // Initialize the MQTT client
         client = new Paho.MQTT.Client(currentHost, currentPort, options.path, options.id);
 
-        // ... Rest of your MQTT setup
+        client.onConnectionLost = (responseObject) => {
+            console.log('Connection Lost:', responseObject.errorMessage);
+          };
+          client.onMessageArrived = (message) => {
+            console.log('Message Arrived:', message.destinationName, message.payloadString);
+  
+            switch (message.destinationName) {
+              case "3RST-3M99-HWVR-H83F/TEMP":
+                  setTemperature(parseFloat(message.payloadString));
+                  break;
+              case "3RST-3M99-HWVR-H83F/HUM":
+                  setHumidity(parseFloat(message.payloadString));
+                  break;
+              case "3RST-3M99-HWVR-H83F/P1":
+                  setP1Value(parseFloat(message.payloadString) + '%');
+                  break;
+              case "3RST-3M99-HWVR-H83F/P2":
+                  setP2Value(parseFloat(message.payloadString) + '%');
+                  break;
+              case "3RST-3M99-HWVR-H83F/P3":
+                  setP3Value(parseFloat(message.payloadString) + '%');
+                  break;
+              case "3RST-3M99-HWVR-H83F/P4":
+                  setP4Value(parseFloat(message.payloadString) + '%');
+                  break;
+              // Add other cases as needed
+          }
+          //client.onMessageArrived = onMessageArrived;
+          };
+        
+          client.connect({
+              onSuccess: onConnect,
+              onFailure: onFailure
+          });
+        
 
-        return () => {
-            // Clean up the client on component unmount
-            if (client && client.isConnected()) {
-                client.disconnect();
+          return () => {
+            if (client.isConnected()) {
+              client.disconnect();
             }
-        };
+          };
     }, []);
 
     function renderSettings() {
@@ -188,49 +232,6 @@ const Plants = () => {
       const onFailure = (error) => {
         console.error("Could not connect to MQTT Broker:", error);
       };
-      useEffect(() => {
-        client.onConnectionLost = (responseObject) => {
-          console.log('Connection Lost:', responseObject.errorMessage);
-        };
-        client.onMessageArrived = (message) => {
-          console.log('Message Arrived:', message.destinationName, message.payloadString);
-
-          switch (message.destinationName) {
-            case "3RST-3M99-HWVR-H83F/TEMP":
-                setTemperature(parseFloat(message.payloadString));
-                break;
-            case "3RST-3M99-HWVR-H83F/HUM":
-                setHumidity(parseFloat(message.payloadString));
-                break;
-            case "3RST-3M99-HWVR-H83F/P1":
-                setP1Value(parseFloat(message.payloadString) + '%');
-                break;
-            case "3RST-3M99-HWVR-H83F/P2":
-                setP2Value(parseFloat(message.payloadString) + '%');
-                break;
-            case "3RST-3M99-HWVR-H83F/P3":
-                setP3Value(parseFloat(message.payloadString) + '%');
-                break;
-            case "3RST-3M99-HWVR-H83F/P4":
-                setP4Value(parseFloat(message.payloadString) + '%');
-                break;
-            // Add other cases as needed
-        }
-        //client.onMessageArrived = onMessageArrived;
-        };
-      
-        client.connect({
-            onSuccess: onConnect,
-            onFailure: onFailure
-        });
-      
-        return () => {
-          if (client.isConnected()) {
-            client.disconnect();
-          }
-        };
-      }, []);
-      
 
       const publishMessage = (topic, message) => {
         if (client.isConnected()) {
@@ -242,19 +243,19 @@ const Plants = () => {
         }
       };
       
-
     return (
     <ImageBackground source = {background} style = {styles.container}>
         <View
     style = {styles.settingsView}
     >
         <TouchableOpacity
-        style = {styles.settings}
-        onPress={() => setOpenModal(true)}
+            style = {styles.settings}
+            onPress={() => setOpenModal(true)}
         >
             <Text
-            style = {styles.settingsText}
-            >Settings</Text>
+                style = {styles.settingsText}
+                >Settings
+            </Text>
         </TouchableOpacity>
         
     </View>
@@ -390,12 +391,7 @@ const Plants = () => {
                 </View>
             </View>
     </View>
-    
     {renderSettings()}
-    
-  
-    
-
     </ImageBackground>
     
   )
@@ -616,61 +612,17 @@ const styles = StyleSheet.create({
         borderColor: "#cccccc", 
         borderWidth: 1 
     },
-
-    wateringCan: {
-
-        width: 50,
-    
-        height: 100,
-    
-        borderRadius: 25,
-    
-        backgroundColor: 'lightblue',
-    
-        overflow: 'hidden',
-    
-      },
-    
-      water: {
-    
-        width: '100%',
-    
-        backgroundColor: 'blue',
-    
-      },
-    
-      handle: {
-    
-        width: 10,
-    
-        height: 50,
-    
-        backgroundColor: 'brown',
-    
-        position: 'absolute',
-    
-        bottom: 0,
-    
-      },
     
       button: {
-    
         marginTop: 20,
-    
         padding: 10,
-    
         backgroundColor: 'lightblue',
-    
         borderRadius: 5,
-    
       },
     
       buttonText: {
-    
         color: 'white',
-    
         fontWeight: 'bold',
-    
       },
     
 })
