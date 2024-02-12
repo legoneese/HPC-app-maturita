@@ -1,0 +1,411 @@
+import { StyleSheet, Text, View, ImageBackground, Image, Button, Touchable, Input } from 'react-native'
+import React, {useState, useEffect} from 'react'
+import background from '../assets/background2.png'
+import image from '../assets/flower6.png'
+import Slider from '@react-native-community/slider'
+import image1 from '../assets/water-droplet5.png'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import init from 'react_native_mqtt';
+
+
+init({
+    size: 10000,
+    storageBackend: AsyncStorage,
+    defaultExpires: 1000 * 3600 * 24,
+    enableCache: true,
+    sync: {}
+  });
+
+  const options = {
+    host: 'broker.emqx.io',
+    port: 8083,
+    path: '/testTopic',
+    //id: 'id_' + parseInt(Math.random() * 100000)
+  };
+  
+  client = new Paho.MQTT.Client(options.host, options.port, options.path);
+
+  
+  
+
+
+
+const Plants = () => {
+    const [range, setRange] = useState("0%")
+    const [range2, setRange2] = useState("0%")
+    const [range3, setRange3] = useState(0)
+    const [range4, setRange4] = useState(0)
+    const [temperature, setTemperature] = useState(0)
+    const [humidity, setHumidity] = useState(0)
+    const [p1Value, setP1Value] = useState("0%");
+    const [p2Value, setP2Value] = useState("0%");
+    const [p3Value, setP3Value] = useState("0%");
+    const [p4Value, setP4Value] = useState("0%");
+    
+    
+
+  
+   
+    
+      const onConnect = () => {
+        console.log("Connected to MQTT Broker");
+        const topics = [
+            "3RST-3M99-HWVR-H83F/HUM",
+            "3RST-3M99-HWVR-H83F/TEMP",
+            "3RST-3M99-HWVR-H83F/P1",
+            "3RST-3M99-HWVR-H83F/P2",
+            "3RST-3M99-HWVR-H83F/P3",
+            "3RST-3M99-HWVR-H83F/P4",
+        ];
+        topics.forEach(topic => client.subscribe(topic));
+        
+      };
+      
+      const onFailure = (error) => {
+        console.error("Could not connect to MQTT Broker:", error);
+      };
+      useEffect(() => {
+        client.onConnectionLost = (responseObject) => {
+          console.log('Connection Lost:', responseObject.errorMessage);
+        };
+        client.onMessageArrived = (message) => {
+          console.log('Message Arrived:', message.destinationName, message.payloadString);
+
+          switch (message.destinationName) {
+            case "3RST-3M99-HWVR-H83F/TEMP":
+                setTemperature(parseFloat(message.payloadString));
+                break;
+            case "3RST-3M99-HWVR-H83F/HUM":
+                setHumidity(parseFloat(message.payloadString));
+                break;
+            case "3RST-3M99-HWVR-H83F/P1":
+                setP1Value(message.payloadString + '%');
+                break;
+            case "3RST-3M99-HWVR-H83F/P2":
+                setP2Value(message.payloadString + '%');
+                break;
+            case "3RST-3M99-HWVR-H83F/P3":
+                setP3Value(message.payloadString + '%');
+                break;
+            case "3RST-3M99-HWVR-H83F/P4":
+                setP4Value(message.payloadString + '%');
+                break;
+            // Add other cases as needed
+        }
+        //client.onMessageArrived = onMessageArrived;
+        };
+      
+        client.connect({
+            onSuccess: onConnect,
+            onFailure: onFailure
+        });
+      
+        return () => {
+          if (client.isConnected()) {
+            client.disconnect();
+          }
+        };
+      }, []);
+      
+
+      const publishMessage = (topic, message) => {
+        if (client.isConnected()) {
+          let mqttMessage = new Paho.MQTT.Message(message);
+          mqttMessage.destinationName = topic;
+          client.send(mqttMessage);
+        } else {
+          console.log("Not connected to MQTT Broker");
+        }
+      };
+      
+      
+      
+
+    return (
+    <ImageBackground source = {background} style = {styles.container}>
+    <View style = {styles.cardSpacer}></View>
+    <View style = {styles.flowerCards}>
+        <View style = {styles.flowerCard}>
+            <View style = {styles.flower1}>
+                <Image style = {styles.flowerImage} source = {image}></Image>
+                <View style = {styles.wetWrapper}>
+                    <Image style = {styles.wetImage} source = {image1}></Image>
+                    <Text style = {styles.wetData}>Topping:</Text>
+                    <Text style = {styles.wetData}>{p1Value}</Text>
+                </View>
+                <View style = {styles.sliderWrapper}>
+                    <Text style = {styles.range}>{range}</Text>
+                    <Slider style = {styles.slider}
+                        minimumValue = {0}
+                        maximumValue = {1}
+                        minimumTrackTintColor = 'rgba(95, 133, 59, 0.8)'
+                        maximumTrackTintColor='rgba(255, 255, 255, 0.8)'
+                        thumbTintColor = 'rgba(95, 133, 59, 1)'
+                        value = {parseFloat(range)/100} // Convert the percentage back to a fraction
+                        onValueChange={value => {
+                            const formattedValue = parseInt(value * 100) + '%';
+                            setRange(formattedValue); 
+                            publishMessage("3RST-3M99-HWVR-H83F/SET1", formattedValue);
+                        }} 
+                        
+                    />
+                </View>
+            </View>
+        </View>
+        <View style = {styles.flowerCard}>
+            <View style = {styles.flower1}>
+                <Image style = {styles.flowerImage} source = {image}></Image>
+                <View style = {styles.wetWrapper}>
+                    <Image style = {styles.wetImage} source = {image1}></Image>
+                    <Text style = {styles.wetData}>Topping:</Text>
+                    <Text style = {styles.wetData}>{p2Value}</Text>
+                </View>
+                <View style = {styles.sliderWrapper}>
+                    <Text style = {styles.range}>{range2}</Text>
+                    <Slider style = {styles.slider}
+                        minimumValue = {0}
+                        maximumValue = {1}
+                        minimumTrackTintColor = 'rgba(95, 133, 59, 0.8)'
+                        maximumTrackTintColor='rgba(255, 255, 255, 0.8)'
+                        thumbTintColor = 'rgba(95, 133, 59, 1)'
+                        value = {parseFloat(range2)/100} // Convert the percentage back to a fraction
+                        onValueChange={value => {
+                            const formattedValue2 = parseInt(value * 100) + '%';
+                            setRange2(formattedValue2); 
+                            publishMessage("3RST-3M99-HWVR-H83F/SET2", formattedValue2);
+                        }} 
+                    />
+                </View>
+            </View>
+        </View>
+        <View style = {styles.flowerCard}>
+            <View style = {styles.flower1}>
+                <Image style = {styles.flowerImage} source = {image}></Image>
+                <View style = {styles.wetWrapper}>
+                    <Image style = {styles.wetImage} source = {image1}></Image>
+                    <Text style = {styles.wetData}>Topping:</Text>
+                    <Text style = {styles.wetData}>{p3Value}</Text>
+                </View>
+                <View style = {styles.sliderWrapper}>
+                    <Text style = {styles.range}>{range3}</Text>
+                    <Slider style = {styles.slider}
+                        minimumValue = {0}
+                        maximumValue = {1}
+                        minimumTrackTintColor = 'rgba(95, 133, 59, 0.8)'
+                        maximumTrackTintColor='rgba(255, 255, 255, 0.8)'
+                        thumbTintColor = 'rgba(95, 133, 59, 1)'
+                        value = {parseFloat(range3)/100} // Convert the percentage back to a fraction
+                        onValueChange={value => {
+                            const formattedValue3 = parseInt(value * 100) + '%';
+                            setRange3(formattedValue3); 
+                            publishMessage("3RST-3M99-HWVR-H83F/SET3", formattedValue3);
+                        }} 
+                    />
+                </View>
+            </View>
+        </View>
+        <View style = {styles.flowerCard}>
+            <View style = {styles.flower1}>
+                <Image style = {styles.flowerImage} source = {image}></Image>
+                <View style = {styles.wetWrapper}>
+                    <Image style = {styles.wetImage} source = {image1}></Image>
+                    <Text style = {styles.wetData}>Topping:</Text>
+                    <Text style = {styles.wetData}>{p4Value}</Text>
+                </View>
+                <View style = {styles.sliderWrapper}>
+                    <Text style = {styles.range}>{range4}</Text>
+                    <Slider style = {styles.slider}
+                        minimumValue = {0}
+                        maximumValue = {1}
+                        minimumTrackTintColor = 'rgba(95, 133, 59, 0.8)'
+                        maximumTrackTintColor='rgba(255, 255, 255, 0.8)'
+                        thumbTintColor = 'rgba(95, 133, 59, 1)'
+                        value = {parseFloat(range4)/100} // Convert the percentage back to a fraction
+                        onValueChange={value => {
+                            const formattedValue4 = parseInt(value * 100) + '%';
+                            setRange4(formattedValue4); 
+                            publishMessage("3RST-3M99-HWVR-H83F/SET4", formattedValue4);
+                        }} 
+                    />
+                </View>
+            </View>
+        </View>
+    </View>
+
+    <View style = {styles.data}>
+            <View style = {styles.dataWrapper}>
+                <View style = {styles.temp}>
+                    <Text style = {styles.tempData}>{temperature}C</Text>
+                    <Text style = {styles.tempTitle}>Temperature</Text>
+                </View>
+                <View style = {styles.hum}>
+                    <Text style = {styles.humData}>{humidity}%</Text>
+                    <Text style = {styles.humTitle}>Humidity</Text>
+                </View>
+            </View>
+    </View>
+    {/*
+    <View>
+        
+        <Button 
+        title="Connect to MQTT"
+        onPress={() => client.connect({onSuccess: onConnect, onFailure: onFailure})}
+        />
+        <Button 
+        title="Subscribe to Topic"
+        onPress={() => client.subscribe("/michaltopic")}
+        />
+        <Button 
+        title="Publish Message"
+        onPress={() => publishMessage("/michaltopic", "asi dobre")}
+        />
+
+    </View>*/}
+    </ImageBackground>
+  )
+}
+export default Plants
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        resizeMode: "cover",
+        justifyContent: "center",
+        
+    },
+
+    data: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        width: "100%",
+    },
+
+    dataWrapper: {
+       flexDirection: "row", 
+       backgroundColor: "rgba(255, 255, 255, 0.5)",
+       height: "35%",
+       width: "80%",
+       justifyContent: "center",
+       alignItems: "center",
+       borderRadius: 20,
+       marginTop: "30%", 
+       marginBottom: "10%"
+    },
+
+    temp: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+
+    hum: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        
+    },
+
+    tempData: {
+        fontSize: 35,
+        color: "white",
+        fontWeight: "800",
+        textAlign: "center",
+    },
+
+    tempTitle: {
+        fontSize: 13,
+        fontWeight: "400",
+        color: "rgba(48, 98, 38, 0.8)",
+        textAlign: "center",
+    },
+
+    humData: {
+        fontSize: 35,
+        color: "white",
+        fontWeight: "800",
+        textAlign: "center"
+    },
+
+    humTitle: {
+        fontSize: 13,
+        fontWeight: "400",
+        color: "rgba(48, 98, 38, 0.8)",
+        textAlign: "center"
+    },
+
+    flowerCards: {
+        flexWrap: 'wrap',
+        flex: 1,
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        width: "100%"
+    },
+
+    flowerCard: {
+        backgroundColor: "rgba(255, 255, 255, 0.5)",
+        height: "60%",
+        width: "45%",
+        borderRadius: 20,
+        alignSelf: 'flex-start',
+        marginHorizontal: '2%',
+        paddingHorizontal: 15,
+        paddingVertical: 6,
+        marginVertical: "2%",
+    },
+
+    flower1: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+
+    flowerImage: {
+        height: "40%",
+        width: "40%",
+    },
+
+    wetData: {
+        fontSize: 11,
+        color: "rgba(48, 98, 38, 0.8)",
+        fontWeight: "300",
+    },
+
+    range: {
+        fontSize: 11,
+        fontWeight: "500",
+        textAlign: "center",
+        color: "rgba(48, 98, 38, 0.8)",
+    },
+
+    slider: {
+        width: 140,
+    },
+
+    sliderWrapper: {
+        alignItems: "center",
+        justifyContent: "center",
+    },
+   
+    wetImage: {
+        marginRight: "6%",
+        height: "25%",
+        width: "15%", 
+    },
+
+    wetWrapper: {
+        height: "10%",
+        width: "40%",
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    cardSpacer: {
+        marginTop: "35%",
+        height: "10%"
+    },
+
+})
